@@ -11,6 +11,16 @@ export default function HomeScreen() {
         router.replace('/(auth)/login');
     };
 
+    const handleDailyReflection = () => {
+        // Navigate to daily reflection (we'll create this screen)
+        router.push('/daily-reflection' as any);
+    };
+
+    const handleGoals = () => {
+        // Navigate to goals (we'll create this screen)
+        router.push('/goals' as any);
+    };
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
@@ -38,7 +48,10 @@ export default function HomeScreen() {
                         Take a moment to reflect on your day. What made you happy?
                         What challenges did you face?
                     </Text>
-                    <TouchableOpacity style={styles.cardButton}>
+                    <TouchableOpacity
+                        style={styles.cardButton}
+                        onPress={handleDailyReflection}
+                    >
                         <Text style={styles.cardButtonText}>Start Reflecting</Text>
                     </TouchableOpacity>
                 </View>
@@ -48,7 +61,10 @@ export default function HomeScreen() {
                     <Text style={styles.cardDescription}>
                         Set meaningful goals and track your progress toward achieving them.
                     </Text>
-                    <TouchableOpacity style={styles.cardButton}>
+                    <TouchableOpacity
+                        style={styles.cardButton}
+                        onPress={handleGoals}
+                    >
                         <Text style={styles.cardButtonText}>View Goals</Text>
                     </TouchableOpacity>
                 </View>
