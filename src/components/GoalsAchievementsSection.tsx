@@ -9,7 +9,8 @@ import {
     Alert,
     ActivityIndicator,
 } from 'react-native';
-import { goalsStorage, achievementsStorage, DailyGoal, Achievement, isToday } from '../storage/localData';
+import { goalService, DailyGoal, GoalStats } from '../services/goal.service';
+import { achievementService, Achievement } from '../services/achievement.service';
 
 interface GoalsAchievementsSectionProps {
     onGoalCompleted?: (goal: DailyGoal) => void;
@@ -30,7 +31,10 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
     const [achievements, setAchievements] = useState<Achievement[]>([]);
     const [newGoalText, setNewGoalText] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const [stats, setStats] = useState({ total: 0, completed: 0, percentage: 0 });
+    const [stats, setStats] = useState<GoalStats>({ total: 0, completed: 0, percentage: 0, pending: 0 });
+
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = (date: string) => date === today;
 
     /**
      * Load goals and achievements on mount
@@ -43,9 +47,9 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
         setIsLoading(true);
         try {
             const [todayGoals, recentAchievements, goalStats] = await Promise.all([
-                goalsStorage.getToday(),
-                achievementsStorage.getRecent(5),
-                goalsStorage.getStats(),
+                goalService.getTodayGoals(),
+                achievementService.getRecentAchievements(5),
+                goalService.getGoalStats(),
             ]);
 
             setGoals(todayGoals);
@@ -53,6 +57,7 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
             setStats(goalStats);
         } catch (error) {
             console.error('Error loading data:', error);
+            Alert.alert('Error', 'Failed to load data. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -74,12 +79,12 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
         }
 
         try {
-            const newGoal = await goalsStorage.addGoal(trimmed);
+            const newGoal = await goalService.createGoal(trimmed);
             setGoals([...goals, newGoal]);
             setNewGoalText('');
 
             // Update stats
-            const updatedStats = await goalsStorage.getStats();
+            const updatedStats = await goalService.getGoalStats();
             setStats(updatedStats);
         } catch (error) {
             console.error('Error adding goal:', error);
@@ -90,7 +95,7 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
     /**
      * Toggle goal completion
      */
-    const handleToggleGoal = async (goalId: string) => {
+    const handleToggleGoal = async (goalId: number) => {
         const goal = goals.find((g) => g.id === goalId);
         if (!goal || !isToday(goal.date)) {
             Alert.alert('Read-Only', 'You can only edit today\'s goals.');
@@ -98,18 +103,18 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
         }
 
         try {
-            const updated = await goalsStorage.toggleGoal(goalId);
+            const updated = await goalService.updateGoal(goalId, { completed: !goal.completed });
             if (updated) {
                 const updatedGoals = goals.map((g) => (g.id === goalId ? updated : g));
                 setGoals(updatedGoals);
 
                 // Update stats
-                const updatedStats = await goalsStorage.getStats();
+                const updatedStats = await goalService.getGoalStats();
                 setStats(updatedStats);
 
                 // If goal was completed, reload achievements
                 if (updated.completed) {
-                    const recentAchievements = await achievementsStorage.getRecent(5);
+                    const recentAchievements = await achievementService.getRecentAchievements(5);
                     setAchievements(recentAchievements);
 
                     if (onGoalCompleted) {
@@ -129,7 +134,7 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
     /**
      * Delete a goal
      */
-    const handleDeleteGoal = (goalId: string) => {
+    const handleDeleteGoal = (goalId: number) => {
         const goal = goals.find((g) => g.id === goalId);
         if (!goal || !isToday(goal.date)) {
             Alert.alert('Read-Only', 'You can only delete today\'s goals.');
@@ -146,11 +151,11 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await goalsStorage.deleteGoal(goalId);
+                            await goalService.deleteGoal(goalId);
                             setGoals(goals.filter((g) => g.id !== goalId));
 
                             // Update stats
-                            const updatedStats = await goalsStorage.getStats();
+                            const updatedStats = await goalService.getGoalStats();
                             setStats(updatedStats);
                         } catch (error) {
                             console.error('Error deleting goal:', error);
@@ -215,7 +220,7 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
                 ) : (
                     <FlatList
                         data={goals}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={(item) => item.id.toString()}
                         scrollEnabled={false}
                         renderItem={({ item }) => (
                             <View style={styles.goalItem}>
@@ -282,7 +287,7 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
                 ) : (
                     <FlatList
                         data={achievements}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={(item) => item.id.toString()}
                         scrollEnabled={false}
                         renderItem={({ item }) => (
                             <View style={styles.achievementItem}>

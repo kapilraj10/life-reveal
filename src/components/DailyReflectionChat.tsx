@@ -11,13 +11,7 @@ import {
     ActivityIndicator,
     Alert,
 } from 'react-native';
-import {
-    reflectionStorage,
-    getTodayDate,
-    isToday,
-    DailyReflection,
-    achievementsStorage,
-} from '../storage/localData';
+import { reflectionService, DailyReflection } from '../services/reflection.service';
 
 interface DailyReflectionChatProps {
     onReflectionSaved?: (reflection: DailyReflection) => void;
@@ -37,8 +31,8 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
     const [isSaving, setIsSaving] = useState(false);
     const inputRef = useRef<TextInput>(null);
 
-    const today = getTodayDate();
-    const canEdit = !currentReflection || isToday(currentReflection.date);
+    const today = new Date().toISOString().split('T')[0];
+    const canEdit = !currentReflection || currentReflection.date === today;
 
     /**
      * Load today's reflection on mount
@@ -50,13 +44,14 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
     const loadTodayReflection = async () => {
         setIsLoading(true);
         try {
-            const reflection = await reflectionStorage.getToday();
+            const reflection = await reflectionService.getTodayReflection();
             if (reflection) {
                 setCurrentReflection(reflection);
                 setReflectionText(reflection.reflectionText);
             }
         } catch (error) {
             console.error('Error loading reflection:', error);
+            Alert.alert('Error', 'Failed to load reflection. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -70,7 +65,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
 
         const autoSaveAsync = async () => {
             try {
-                const saved = await reflectionStorage.saveToday(reflectionText);
+                const saved = await reflectionService.saveReflection(reflectionText);
                 setCurrentReflection(saved);
             } catch (error) {
                 console.error('Auto-save error:', error);
@@ -100,11 +95,8 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
 
         setIsSaving(true);
         try {
-            const saved = await reflectionStorage.saveToday(reflectionText);
+            const saved = await reflectionService.saveReflection(reflectionText);
             setCurrentReflection(saved);
-
-            // Check for streak achievements
-            await achievementsStorage.checkStreaks();
 
             if (onReflectionSaved) {
                 onReflectionSaved(saved);

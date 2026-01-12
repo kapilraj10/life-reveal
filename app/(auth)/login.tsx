@@ -21,7 +21,7 @@ export default function Login() {
             setLoading(true);
             setError('');
             const user = await login({ email, password });
-            loginUser(user);
+            await loginUser(user);
             router.replace('/home' as any);
         } catch {
             setError('Login failed. Please try again.');

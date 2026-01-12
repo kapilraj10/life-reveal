@@ -4,20 +4,21 @@ import { AuthContext } from '../src/context/auth';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function Index() {
-    const { user } = useContext(AuthContext);
+    const { user, isLoading } = useContext(AuthContext);
 
     useEffect(() => {
-        // Small delay to ensure context is ready
-        const timeout = setTimeout(() => {
-            if (user) {
-                router.replace('/home' as any);
-            } else {
-                router.replace('/(auth)/login');
-            }
-        }, 100);
+        // Wait for auth state to load before navigating
+        if (isLoading) {
+            return;
+        }
 
-        return () => clearTimeout(timeout);
-    }, [user]);
+        // Navigate based on auth state
+        if (user) {
+            router.replace('/home' as any);
+        } else {
+            router.replace('/(auth)/login');
+        }
+    }, [user, isLoading]);
 
     return (
         <View style={styles.container}>

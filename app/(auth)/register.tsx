@@ -27,7 +27,7 @@ export default function Register() {
       setLoading(true);
       setError('');
       const user = await register({ name, email, password });
-      loginUser(user);
+      await loginUser(user);
       router.replace('/home' as any);
     } catch {
       setError('Registration failed. Please try again.');
