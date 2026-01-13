@@ -48,9 +48,14 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
             if (reflection) {
                 setCurrentReflection(reflection);
                 setReflectionText(reflection.reflectionText);
+                console.log('✅ Reflection loaded:', { date: reflection.date, length: reflection.reflectionText.length });
+            } else {
+                console.log('ℹ️ No reflection found for today');
+                setCurrentReflection(null);
+                setReflectionText('');
             }
         } catch (error) {
-            console.error('Error loading reflection:', error);
+            console.error('❌ Error loading reflection:', error);
             Alert.alert('Error', 'Failed to load reflection. Please try again.');
         } finally {
             setIsLoading(false);
@@ -67,8 +72,9 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
             try {
                 const saved = await reflectionService.saveReflection(reflectionText);
                 setCurrentReflection(saved);
+                console.log('✅ Auto-saved reflection:', { date: saved.date, length: saved.reflectionText.length });
             } catch (error) {
-                console.error('Auto-save error:', error);
+                console.error('❌ Auto-save error:', error);
             }
         };
 
@@ -97,6 +103,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
         try {
             const saved = await reflectionService.saveReflection(reflectionText);
             setCurrentReflection(saved);
+            console.log('✅ Reflection saved manually:', { id: saved.id, date: saved.date });
 
             if (onReflectionSaved) {
                 onReflectionSaved(saved);
@@ -107,9 +114,10 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
                 'Your thoughts have been recorded for today.',
                 [{ text: 'OK' }]
             );
-        } catch (error) {
-            console.error('Save error:', error);
-            Alert.alert('Error', 'Failed to save reflection. Please try again.');
+        } catch (error: any) {
+            console.error('❌ Save error:', error);
+            const errorMessage = error?.message || 'Failed to save reflection. Please try again.';
+            Alert.alert('Error', errorMessage);
         } finally {
             setIsSaving(false);
         }
@@ -138,7 +146,14 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.title}>💭 Daily Reflection</Text>
-                    <Text style={styles.date}>{formatDate(today)}</Text>
+                    <View style={styles.headerRight}>
+                        <Text style={styles.date}>{formatDate(today)}</Text>
+                        {currentReflection && (
+                            <View style={styles.savedBadge}>
+                                <Text style={styles.savedBadgeText}>✓ Saved</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
                 {/* Chat Area */}
@@ -255,12 +270,30 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8F9FA',
         borderBottomWidth: 1,
         borderBottomColor: '#E9ECEF',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    headerRight: {
+        alignItems: 'flex-end',
     },
     title: {
         fontSize: 20,
         fontWeight: '700',
         color: '#1A1A1A',
         marginBottom: 4,
+    },
+    savedBadge: {
+        backgroundColor: '#28A745',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginTop: 4,
+    },
+    savedBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     date: {
         fontSize: 14,
