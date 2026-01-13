@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { DashboardHeader } from '../components/DashboardHeader';
+import { DashboardStatsCard } from '../components/DashboardStatsCard';
 import { DailyReflectionChat } from '../components/DailyReflectionChat';
 import { GoalsAchievementsSection } from '../components/GoalsAchievementsSection';
 
@@ -9,6 +10,7 @@ import { GoalsAchievementsSection } from '../components/GoalsAchievementsSection
  * 
  * Features:
  * - App header with logout
+ * - Dashboard statistics card with charts
  * - Daily reflection chat UI
  * - Goals & Achievements section
  * - All data saved locally
@@ -27,6 +29,9 @@ export const DashboardScreen: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Dashboard Statistics Card */}
+                <DashboardStatsCard />
+
                 {/* Daily Reflection Section */}
                 <DailyReflectionChat
                     onReflectionSaved={(reflection) => {
