@@ -10,6 +10,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    Animated,
 } from 'react-native';
 import { reflectionService, DailyReflection } from '../services/reflection.service';
 
@@ -19,20 +20,32 @@ interface DailyReflectionChatProps {
 
 /**
  * Daily Reflection Chat Component
- * - Chat-like UI for daily reflections
+ * - Modern chat-like UI for daily reflections
  * - Auto-saves locally
  * - Editable same day, read-only after
- * - Submits once per day
+ * - Enhanced visual feedback
  */
 export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onReflectionSaved }) => {
     const [reflectionText, setReflectionText] = useState('');
     const [currentReflection, setCurrentReflection] = useState<DailyReflection | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const inputRef = useRef<TextInput>(null);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     const today = new Date().toISOString().split('T')[0];
     const canEdit = !currentReflection || currentReflection.date === today;
+
+    // Pulse animation for save badge
+    useEffect(() => {
+        if (currentReflection) {
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            ]).start();
+        }
+    }, [currentReflection]);
 
     /**
      * Load today's reflection on mount
@@ -66,7 +79,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
      * Auto-save reflection (debounced)
      */
     useEffect(() => {
-        if (!canEdit || !reflectionText.trim()) return;
+        if (!canEdit || !reflectionText.trim() || !isEditing) return;
 
         const autoSaveAsync = async () => {
             try {
@@ -83,7 +96,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
         }, 1000); // Auto-save after 1 second of no typing
 
         return () => clearTimeout(timer);
-    }, [reflectionText, canEdit]);
+    }, [reflectionText, canEdit, isEditing]);
 
     /**
      * Submit reflection (explicit save)
@@ -103,6 +116,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
         try {
             const saved = await reflectionService.saveReflection(reflectionText);
             setCurrentReflection(saved);
+            setIsEditing(false);
             console.log('✅ Reflection saved manually:', { id: saved.id, date: saved.date });
 
             if (onReflectionSaved) {
@@ -110,7 +124,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
             }
 
             Alert.alert(
-                'Reflection Saved! ✨',
+                '✨ Reflection Saved!',
                 'Your thoughts have been recorded for today.',
                 [{ text: 'OK' }]
             );
@@ -123,15 +137,38 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
         }
     };
 
+    /**
+     * Clear reflection
+     */
+    const handleClear = () => {
+        Alert.alert(
+            'Clear Reflection',
+            'Are you sure you want to clear your reflection?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: () => {
+                        setReflectionText('');
+                        setIsEditing(true);
+                    },
+                },
+            ]
+        );
+    };
+
     if (isLoading) {
         return (
             <View style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Daily Reflection</Text>
-                    <Text style={styles.date}>{formatDate(today)}</Text>
-                </View>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#6C63FF" />
+                <View style={styles.card}>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>💭 Daily Reflection</Text>
+                    </View>
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#6C63FF" />
+                        <Text style={styles.loadingText}>Loading reflection...</Text>
+                    </View>
                 </View>
             </View>
         );
@@ -145,81 +182,117 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
             <View style={styles.card}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>💭 Daily Reflection</Text>
-                    <View style={styles.headerRight}>
+                    <View style={styles.headerLeft}>
+                        <Text style={styles.title}>💭 Daily Reflection</Text>
                         <Text style={styles.date}>{formatDate(today)}</Text>
-                        {currentReflection && (
-                            <View style={styles.savedBadge}>
-                                <Text style={styles.savedBadgeText}>✓ Saved</Text>
-                            </View>
+                    </View>
+                    <View style={styles.headerRight}>
+                        {currentReflection && !isEditing && (
+                            <Animated.View
+                                style={[
+                                    styles.savedBadge,
+                                    { transform: [{ scale: pulseAnim }] }
+                                ]}
+                            >
+                                <Text style={styles.savedBadgeText}>✓</Text>
+                            </Animated.View>
                         )}
                     </View>
                 </View>
 
-                {/* Chat Area */}
+                {/* Content */}
                 <ScrollView
                     style={styles.chatArea}
                     contentContainerStyle={styles.chatContent}
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
-                    {/* Prompt Message */}
-                    <View style={styles.promptBubble}>
-                        <Text style={styles.promptText}>
-                            How was your day? What did you learn? What are you grateful for?
-                        </Text>
+                    {/* Prompt */}
+                    <View style={styles.promptContainer}>
+                        <View style={styles.promptBubble}>
+                            <Text style={styles.promptEmoji}>🌟</Text>
+                            <Text style={styles.promptText}>
+                                How was your day? What did you learn? What are you grateful for?
+                            </Text>
+                        </View>
                     </View>
 
                     {/* User Input */}
-                    <View style={styles.userBubble}>
-                        <TextInput
-                            ref={inputRef}
-                            style={[styles.input, !canEdit && styles.inputReadOnly]}
-                            value={reflectionText}
-                            onChangeText={setReflectionText}
-                            placeholder="Share your thoughts..."
-                            placeholderTextColor="#999"
-                            multiline
-                            editable={canEdit}
-                            textAlignVertical="top"
-                            maxLength={2000}
-                        />
-                        {!canEdit && (
-                            <View style={styles.readOnlyBadge}>
-                                <Text style={styles.readOnlyText}>Read-Only (Past Day)</Text>
-                            </View>
+                    <View style={styles.userContainer}>
+                        <View style={[styles.userBubble, !canEdit && styles.userBubbleReadOnly]}>
+                            <TextInput
+                                ref={inputRef}
+                                style={[styles.input, !canEdit && styles.inputReadOnly]}
+                                value={reflectionText}
+                                onChangeText={(text) => {
+                                    setReflectionText(text);
+                                    setIsEditing(true);
+                                }}
+                                placeholder="Share your thoughts here..."
+                                placeholderTextColor="#A0AEC0"
+                                multiline
+                                editable={canEdit}
+                                textAlignVertical="top"
+                                maxLength={2000}
+                            />
+                            {!canEdit && (
+                                <View style={styles.readOnlyOverlay}>
+                                    <View style={styles.readOnlyBadge}>
+                                        <Text style={styles.readOnlyText}>🔒 Read-Only (Past Day)</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Character Count */}
+                        {canEdit && reflectionText.length > 0 && (
+                            <Text style={styles.charCount}>
+                                {reflectionText.length} / 2000
+                            </Text>
                         )}
                     </View>
-
-                    {/* Character Count */}
-                    {canEdit && (
-                        <Text style={styles.charCount}>
-                            {reflectionText.length} / 2000 characters
-                        </Text>
-                    )}
                 </ScrollView>
 
-                {/* Submit Button */}
+                {/* Action Buttons */}
                 {canEdit && (
                     <View style={styles.footer}>
-                        <TouchableOpacity
-                            style={[
-                                styles.submitButton,
-                                (!reflectionText.trim() || isSaving) && styles.submitButtonDisabled,
-                            ]}
-                            onPress={handleSubmit}
-                            disabled={!reflectionText.trim() || isSaving}
-                            activeOpacity={0.8}
-                        >
-                            {isSaving ? (
-                                <ActivityIndicator color="#FFFFFF" />
-                            ) : (
-                                <Text style={styles.submitText}>
-                                    {currentReflection ? 'Update Reflection' : 'Save Reflection'}
-                                </Text>
+                        <View style={styles.buttonRow}>
+                            {/* Clear Button */}
+                            {reflectionText.length > 0 && (
+                                <TouchableOpacity
+                                    style={styles.clearButton}
+                                    onPress={handleClear}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.clearButtonText}>🗑️ Clear</Text>
+                                </TouchableOpacity>
                             )}
-                        </TouchableOpacity>
-                        {currentReflection && (
-                            <Text style={styles.autoSaveText}>Auto-saved ✓</Text>
+
+                            {/* Save Button */}
+                            <TouchableOpacity
+                                style={[
+                                    styles.submitButton,
+                                    (!reflectionText.trim() || isSaving) && styles.submitButtonDisabled,
+                                    reflectionText.length > 0 && styles.submitButtonActive
+                                ]}
+                                onPress={handleSubmit}
+                                disabled={!reflectionText.trim() || isSaving}
+                                activeOpacity={0.8}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <>
+                                        <Text style={styles.submitText}>
+                                            {currentReflection && !isEditing ? '✓ Saved' : '💾 Save Reflection'}
+                                        </Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+
+                        {currentReflection && isEditing && (
+                            <Text style={styles.autoSaveHint}>💡 Auto-saving as you type...</Text>
                         )}
                     </View>
                 )}
@@ -266,125 +339,194 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     header: {
-        padding: 16,
-        backgroundColor: '#F8F9FA',
+        padding: 20,
+        backgroundColor: '#FAFBFC',
         borderBottomWidth: 1,
-        borderBottomColor: '#E9ECEF',
+        borderBottomColor: '#E2E8F0',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    headerLeft: {
+        flex: 1,
     },
     headerRight: {
         alignItems: 'flex-end',
     },
     title: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: '700',
-        color: '#1A1A1A',
+        color: '#1A202C',
         marginBottom: 4,
     },
+    date: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#718096',
+    },
     savedBadge: {
-        backgroundColor: '#28A745',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginTop: 4,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#48BB78',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#48BB78',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
     savedBadgeText: {
-        fontSize: 11,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
         color: '#FFFFFF',
     },
-    date: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#6C757D',
-    },
     loadingContainer: {
-        padding: 40,
+        padding: 60,
         alignItems: 'center',
         justifyContent: 'center',
     },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 14,
+        color: '#718096',
+    },
     chatArea: {
-        maxHeight: 300,
+        maxHeight: 350,
     },
     chatContent: {
-        padding: 16,
+        padding: 20,
+    },
+    promptContainer: {
+        marginBottom: 20,
     },
     promptBubble: {
-        backgroundColor: '#E8F4FD',
-        padding: 12,
-        borderRadius: 12,
-        marginBottom: 16,
-        alignSelf: 'flex-start',
-        maxWidth: '85%',
+        backgroundColor: '#EBF8FF',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#BEE3F8',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        maxWidth: '90%',
+    },
+    promptEmoji: {
+        fontSize: 20,
+        marginRight: 12,
     },
     promptText: {
+        flex: 1,
         fontSize: 15,
-        color: '#2C5F8D',
+        color: '#2C5282',
         lineHeight: 22,
+        fontWeight: '500',
+    },
+    userContainer: {
+        marginBottom: 8,
     },
     userBubble: {
-        backgroundColor: '#F8F9FA',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#DEE2E6',
+        backgroundColor: '#F7FAFC',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#E2E8F0',
+    },
+    userBubbleReadOnly: {
+        backgroundColor: '#EDF2F7',
+        borderColor: '#CBD5E0',
     },
     input: {
         fontSize: 16,
-        color: '#1A1A1A',
+        color: '#1A202C',
         lineHeight: 24,
-        minHeight: 100,
-        maxHeight: 200,
+        minHeight: 120,
+        maxHeight: 220,
     },
     inputReadOnly: {
-        color: '#6C757D',
-        backgroundColor: '#F1F3F5',
+        color: '#718096',
+    },
+    readOnlyOverlay: {
+        marginTop: 12,
     },
     readOnlyBadge: {
-        marginTop: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        backgroundColor: '#FFF3CD',
-        borderRadius: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#FEEBC8',
+        borderRadius: 10,
         alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: '#FBD38D',
     },
     readOnlyText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#856404',
+        color: '#7C2D12',
     },
     charCount: {
         fontSize: 12,
-        color: '#ADB5BD',
+        color: '#A0AEC0',
         textAlign: 'right',
         marginTop: 8,
+        fontWeight: '500',
     },
     footer: {
-        padding: 16,
+        padding: 20,
         borderTopWidth: 1,
-        borderTopColor: '#E9ECEF',
+        borderTopColor: '#E2E8F0',
+        backgroundColor: '#FAFBFC',
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12,
+    },
+    clearButton: {
+        backgroundColor: '#FED7D7',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FC8181',
+    },
+    clearButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#C53030',
     },
     submitButton: {
-        backgroundColor: '#6C63FF',
-        paddingVertical: 14,
-        borderRadius: 12,
+        flex: 1,
+        backgroundColor: '#CBD5E0',
+        paddingVertical: 16,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    submitButtonActive: {
+        backgroundColor: '#6C63FF',
+        shadowColor: '#6C63FF',
+        shadowOpacity: 0.4,
     },
     submitButtonDisabled: {
-        backgroundColor: '#CED4DA',
+        backgroundColor: '#E2E8F0',
+        shadowOpacity: 0,
     },
     submitText: {
         fontSize: 16,
         fontWeight: '700',
         color: '#FFFFFF',
     },
-    autoSaveText: {
+    autoSaveHint: {
         fontSize: 12,
-        color: '#28A745',
+        color: '#48BB78',
         textAlign: 'center',
-        marginTop: 8,
+        marginTop: 12,
+        fontWeight: '500',
     },
 });
