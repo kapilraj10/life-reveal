@@ -132,18 +132,27 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
     };
 
     /**
-     * Delete a goal
+     * Delete a goal (only completed goals can be deleted)
      */
     const handleDeleteGoal = (goalId: number) => {
         const goal = goals.find((g) => g.id === goalId);
-        if (!goal || !isToday(goal.date)) {
+        if (!goal) {
+            return;
+        }
+
+        if (!isToday(goal.date)) {
             Alert.alert('Read-Only', 'You can only delete today\'s goals.');
+            return;
+        }
+
+        if (!goal.completed) {
+            Alert.alert('Cannot Delete', 'Only completed goals can be deleted. Please complete the goal first.');
             return;
         }
 
         Alert.alert(
             'Delete Goal',
-            'Are you sure you want to delete this goal?',
+            'Are you sure you want to delete this completed goal?',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -157,9 +166,12 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
                             // Update stats
                             const updatedStats = await goalService.getGoalStats();
                             setStats(updatedStats);
-                        } catch (error) {
+
+                            Alert.alert('Success', 'Goal deleted successfully!');
+                        } catch (error: any) {
                             console.error('Error deleting goal:', error);
-                            Alert.alert('Error', 'Failed to delete goal. Please try again.');
+                            const errorMessage = error?.message || 'Failed to delete goal. Please try again.';
+                            Alert.alert('Error', errorMessage);
                         }
                     },
                 },
@@ -245,13 +257,21 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
                                     {item.title}
                                 </Text>
 
-                                <TouchableOpacity
-                                    style={styles.deleteButton}
-                                    onPress={() => handleDeleteGoal(item.id)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={styles.deleteButtonText}>×</Text>
-                                </TouchableOpacity>
+                                {/* Only show delete button for completed goals */}
+                                {item.completed && isToday(item.date) && (
+                                    <TouchableOpacity
+                                        style={styles.deleteButton}
+                                        onPress={() => handleDeleteGoal(item.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.deleteButtonText}>×</Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                {/* Show empty space for incomplete goals to maintain layout */}
+                                {!item.completed && (
+                                    <View style={styles.deleteButtonPlaceholder} />
+                                )}
                             </View>
                         )}
                     />
@@ -502,6 +522,11 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: '300',
         color: '#DC3545',
+    },
+    deleteButtonPlaceholder: {
+        width: 32,
+        height: 32,
+        marginLeft: 8,
     },
     progressContainer: {
         marginTop: 16,
