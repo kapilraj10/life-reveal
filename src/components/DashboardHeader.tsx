@@ -1,9 +1,12 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { AuthContext } from '../context/auth';
 import { reflectionService } from '../services/reflection.service';
 import { goalService } from '../services/goal.service';
+import { achievementService } from '../services/achievement.service';
 
 interface DashboardHeaderProps {
     onLogout?: () => void;
@@ -64,6 +67,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
     const handleExportReflections = async () => {
         setIsExporting(true);
         try {
+            console.log('📊 Starting reflections export...');
             const { reflections } = await reflectionService.getAllReflections({ limit: 1000 });
 
             if (reflections.length === 0) {
@@ -72,21 +76,45 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
             }
 
             // Format as CSV
-            let csv = 'Date,Reflection,Created At\n';
+            let csvContent = 'Date,Reflection,Created At\n';
             reflections.forEach(r => {
                 const text = r.reflectionText.replace(/"/g, '""').replace(/\n/g, ' ');
-                csv += `"${r.date}","${text}","${r.createdAt}"\n`;
+                csvContent += `"${r.date}","${text}","${r.createdAt}"\n`;
             });
 
-            console.log('📊 Reflections exported:', reflections.length);
-            Alert.alert(
-                'Export Complete',
-                `Exported ${reflections.length} reflections.\n\nData logged to console.`,
-                [{ text: 'OK' }]
-            );
+            // Save to file using new expo-file-system API
+            const fileName = `reflections_${new Date().toISOString().split('T')[0]}.csv`;
+            const file = new File(Paths.cache, fileName);
+
+            await file.write(csvContent);
+
+            console.log('✅ Reflections CSV saved to:', file.uri);
+
+            // Check if sharing is available
+            const canShare = await Sharing.isAvailableAsync();
+
+            if (canShare) {
+                await Sharing.shareAsync(file.uri, {
+                    mimeType: 'text/csv',
+                    dialogTitle: 'Export Daily Reflections',
+                    UTI: 'public.comma-separated-values-text',
+                });
+                console.log('📤 Reflections shared successfully');
+                Alert.alert(
+                    'Success',
+                    `Exported ${reflections.length} reflections!`,
+                    [{ text: 'OK' }]
+                );
+            } else {
+                Alert.alert(
+                    'Export Complete',
+                    `Exported ${reflections.length} reflections to:\n${file.uri}`,
+                    [{ text: 'OK' }]
+                );
+            }
         } catch (error) {
-            console.error('Export error:', error);
-            Alert.alert('Error', 'Failed to export reflections.');
+            console.error('❌ Export error:', error);
+            Alert.alert('Error', 'Failed to export reflections. Check console for details.');
         } finally {
             setIsExporting(false);
         }
@@ -95,6 +123,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
     const handleExportGoals = async () => {
         setIsExporting(true);
         try {
+            console.log('🎯 Starting goals export...');
             const { goals } = await goalService.getAllGoals({ limit: 1000 });
 
             if (goals.length === 0) {
@@ -103,21 +132,102 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
             }
 
             // Format as CSV
-            let csv = 'Date,Title,Completed,Created At\n';
+            let csvContent = 'Date,Title,Completed,Created At\n';
             goals.forEach(g => {
                 const title = g.title.replace(/"/g, '""');
-                csv += `"${g.date}","${title}","${g.completed}","${g.createdAt}"\n`;
+                csvContent += `"${g.date}","${title}","${g.completed}","${g.createdAt}"\n`;
             });
 
-            console.log('📊 Goals exported:', goals.length);
-            Alert.alert(
-                'Export Complete',
-                `Exported ${goals.length} goals.\n\nData logged to console.`,
-                [{ text: 'OK' }]
-            );
+            // Save to file using new expo-file-system API
+            const fileName = `goals_${new Date().toISOString().split('T')[0]}.csv`;
+            const file = new File(Paths.cache, fileName);
+
+            await file.write(csvContent);
+
+            console.log('✅ Goals CSV saved to:', file.uri);
+
+            // Check if sharing is available
+            const canShare = await Sharing.isAvailableAsync();
+
+            if (canShare) {
+                await Sharing.shareAsync(file.uri, {
+                    mimeType: 'text/csv',
+                    dialogTitle: 'Export Daily Goals',
+                    UTI: 'public.comma-separated-values-text',
+                });
+                console.log('📤 Goals shared successfully');
+                Alert.alert(
+                    'Success',
+                    `Exported ${goals.length} goals!`,
+                    [{ text: 'OK' }]
+                );
+            } else {
+                Alert.alert(
+                    'Export Complete',
+                    `Exported ${goals.length} goals to:\n${file.uri}`,
+                    [{ text: 'OK' }]
+                );
+            }
         } catch (error) {
-            console.error('Export error:', error);
-            Alert.alert('Error', 'Failed to export goals.');
+            console.error('❌ Export error:', error);
+            Alert.alert('Error', 'Failed to export goals. Check console for details.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleExportAchievements = async () => {
+        setIsExporting(true);
+        try {
+            console.log('🏆 Starting achievements export...');
+            const { achievements } = await achievementService.getAllAchievements({ limit: 1000 });
+
+            if (achievements.length === 0) {
+                Alert.alert('No Data', 'You have no achievements to export.');
+                return;
+            }
+
+            // Format as CSV
+            let csvContent = 'Title,Description,Type,Date,Created At\n';
+            achievements.forEach(a => {
+                const title = a.title.replace(/"/g, '""');
+                const description = a.description.replace(/"/g, '""').replace(/\n/g, ' ');
+                csvContent += `"${title}","${description}","${a.type}","${a.date}","${a.createdAt}"\n`;
+            });
+
+            // Save to file using new expo-file-system API
+            const fileName = `achievements_${new Date().toISOString().split('T')[0]}.csv`;
+            const file = new File(Paths.cache, fileName);
+
+            await file.write(csvContent);
+
+            console.log('✅ Achievements CSV saved to:', file.uri);
+
+            // Check if sharing is available
+            const canShare = await Sharing.isAvailableAsync();
+
+            if (canShare) {
+                await Sharing.shareAsync(file.uri, {
+                    mimeType: 'text/csv',
+                    dialogTitle: 'Export Achievements',
+                    UTI: 'public.comma-separated-values-text',
+                });
+                console.log('📤 Achievements shared successfully');
+                Alert.alert(
+                    'Success',
+                    `Exported ${achievements.length} achievements!`,
+                    [{ text: 'OK' }]
+                );
+            } else {
+                Alert.alert(
+                    'Export Complete',
+                    `Exported ${achievements.length} achievements to:\n${file.uri}`,
+                    [{ text: 'OK' }]
+                );
+            }
+        } catch (error) {
+            console.error('❌ Export error:', error);
+            Alert.alert('Error', 'Failed to export achievements. Check console for details.');
         } finally {
             setIsExporting(false);
         }
@@ -202,7 +312,17 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
                                     activeOpacity={0.7}
                                 >
                                     <Text style={styles.actionButtonText}>
-                                        {isExporting ? 'Exporting...' : '🎯 Export Goals & Achievements'}
+                                        {isExporting ? 'Exporting...' : '🎯 Export Goals'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.actionButton, isExporting && styles.actionButtonDisabled]}
+                                    onPress={handleExportAchievements}
+                                    disabled={isExporting}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.actionButtonText}>
+                                        {isExporting ? 'Exporting...' : '🏆 Export Achievements'}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
