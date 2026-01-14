@@ -32,13 +32,27 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            console.log('🚪 Starting logout process...');
+
+                            // Close modal first
+                            setShowProfileModal(false);
+
+                            // Call logout from AuthContext - this removes token
                             await logout();
+                            console.log('✅ Token removed, user cleared');
+
+                            // Call optional onLogout callback
                             if (onLogout) {
                                 onLogout();
                             }
+
+                            // Redirect to login page
+                            console.log('🔄 Redirecting to login page...');
                             router.replace('/(auth)/login');
+
+                            console.log('✅ Logout complete');
                         } catch (error) {
-                            console.error('Logout error:', error);
+                            console.error('❌ Logout error:', error);
                             Alert.alert('Error', 'Failed to logout. Please try again.');
                         }
                     },

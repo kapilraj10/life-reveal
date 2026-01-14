@@ -29,18 +29,24 @@ export const DashboardStatsCard: React.FC = () => {
         try {
             setLoading(true);
 
-            // Get all reflections and goals
-            const reflectionsResponse = await reflectionService.getAllReflections();
-            const goalsResponse = await goalService.getAllGoals();
+            // Get all reflections and goals (with high limit to get all data)
+            const reflectionsResponse = await reflectionService.getAllReflections({ limit: 1000 });
+            const goalsResponse = await goalService.getAllGoals({ limit: 1000 });
 
-            const reflections = reflectionsResponse.reflections;
-            const goals = goalsResponse.goals;
+            const reflections = reflectionsResponse.reflections || [];
+            const goals = goalsResponse.goals || [];
+
+            console.log('📊 Loaded data:', {
+                totalReflections: reflections.length,
+                totalGoals: goals.length
+            });
 
             // Calculate stats for last 7 days
             const last7Days = getLast7Days();
             const weeklyReflections = new Array(7).fill(0);
             const weeklyGoals = new Array(7).fill(0);
 
+            // Count reflections in last 7 days
             reflections.forEach((reflection) => {
                 const reflectionDate = new Date(reflection.date).toDateString();
                 const index = last7Days.findIndex(d => d.toDateString() === reflectionDate);
@@ -49,6 +55,7 @@ export const DashboardStatsCard: React.FC = () => {
                 }
             });
 
+            // Count goals in last 7 days
             goals.forEach((goal) => {
                 const goalDate = new Date(goal.date).toDateString();
                 const index = last7Days.findIndex(d => d.toDateString() === goalDate);
@@ -57,17 +64,36 @@ export const DashboardStatsCard: React.FC = () => {
                 }
             });
 
+            // Calculate totals (ALL time, not just last 7 days)
+            const totalReflections = reflections.length;
+            const totalGoals = goals.length;
             const completedGoals = goals.filter(g => g.completed).length;
 
+            console.log('📊 Stats calculated:', {
+                totalReflections,
+                totalGoals,
+                completedGoals,
+                weeklyReflections,
+                weeklyGoals
+            });
+
             setStats({
-                reflectionCount: reflections.length,
-                goalCount: goals.length,
+                reflectionCount: totalReflections,
+                goalCount: totalGoals,
                 completedGoals,
                 weeklyReflections,
                 weeklyGoals,
             });
         } catch (error) {
             console.error('📊 Error loading stats:', error);
+            // Set empty stats on error
+            setStats({
+                reflectionCount: 0,
+                goalCount: 0,
+                completedGoals: 0,
+                weeklyReflections: [0, 0, 0, 0, 0, 0, 0],
+                weeklyGoals: [0, 0, 0, 0, 0, 0, 0],
+            });
         } finally {
             setLoading(false);
         }
@@ -142,6 +168,11 @@ export const DashboardStatsCard: React.FC = () => {
         ? Math.round((stats.completedGoals / stats.goalCount) * 100)
         : 0;
 
+    // Get date range for subtitle
+    const last7Days = getLast7Days();
+    const startDate = last7Days[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = last7Days[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
     if (loading) {
         return (
             <View style={styles.card}>
@@ -155,22 +186,26 @@ export const DashboardStatsCard: React.FC = () => {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.title}>📊 Your Activity</Text>
-                <Text style={styles.subtitle}>Last 7 days</Text>
+                <Text style={styles.subtitle}>Chart: {startDate} - {endDate}</Text>
+                <Text style={styles.subtitleNote}>Stats: All time totals</Text>
             </View>
 
             {/* Summary Stats */}
             <View style={styles.summaryRow}>
                 <View style={styles.statBox}>
                     <Text style={styles.statValue}>{stats.reflectionCount}</Text>
+                    <Text style={styles.statLabel}>Total</Text>
                     <Text style={styles.statLabel}>Reflections</Text>
                 </View>
                 <View style={styles.statBox}>
                     <Text style={styles.statValue}>{stats.completedGoals}</Text>
+                    <Text style={styles.statLabel}>Goals</Text>
                     <Text style={styles.statLabel}>Completed</Text>
                 </View>
                 <View style={styles.statBox}>
                     <Text style={styles.statValue}>{completionRate}%</Text>
-                    <Text style={styles.statLabel}>Success Rate</Text>
+                    <Text style={styles.statLabel}>Success</Text>
+                    <Text style={styles.statLabel}>Rate</Text>
                 </View>
             </View>
 
@@ -224,6 +259,12 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: '#6C757D',
+    },
+    subtitleNote: {
+        fontSize: 12,
+        color: '#6C757D',
+        fontStyle: 'italic',
+        marginTop: 2,
     },
     summaryRow: {
         flexDirection: 'row',

@@ -85,11 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = async () => {
         try {
-            // Clear only auth data, keep reflections/goals/achievements
+            console.log('🔓 Logging out user...');
+
+            // Clear user and token from AsyncStorage
             await AsyncStorage.multiRemove(['user', 'token']);
+            console.log('✅ Token and user data removed from storage');
+
+            // Clear user from state
             setUser(null);
+            console.log('✅ User state cleared');
+
         } catch (error) {
-            console.error('Error logging out:', error);
+            console.error('❌ Error during logout:', error);
             throw error;
         }
     };

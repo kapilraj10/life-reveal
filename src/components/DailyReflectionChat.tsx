@@ -57,6 +57,7 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
     const loadTodayReflection = async () => {
         setIsLoading(true);
         try {
+            console.log('🔄 Loading today\'s reflection...');
             const reflection = await reflectionService.getTodayReflection();
             if (reflection) {
                 setCurrentReflection(reflection);
@@ -67,9 +68,22 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
                 setCurrentReflection(null);
                 setReflectionText('');
             }
-        } catch (error) {
-            console.error('❌ Error loading reflection:', error);
-            Alert.alert('Error', 'Failed to load reflection. Please try again.');
+        } catch (error: any) {
+            console.error('❌ Error loading reflection:', {
+                message: error?.message,
+                type: error?.name
+            });
+
+            // Show helpful error message
+            if (error?.message?.includes('Network') || error?.message?.includes('Failed to fetch')) {
+                Alert.alert(
+                    'Connection Error',
+                    'Cannot connect to server. Please ensure:\n\n1. Backend server is running on port 5000\n2. If using physical device, update API_URL to your computer\'s IP address\n3. Check your network connection',
+                    [{ text: 'OK' }]
+                );
+            } else {
+                Alert.alert('Error', 'Failed to load reflection. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -83,11 +97,16 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
 
         const autoSaveAsync = async () => {
             try {
+                console.log('💾 Auto-saving reflection...', { length: reflectionText.length });
                 const saved = await reflectionService.saveReflection(reflectionText);
                 setCurrentReflection(saved);
                 console.log('✅ Auto-saved reflection:', { date: saved.date, length: saved.reflectionText.length });
-            } catch (error) {
-                console.error('❌ Auto-save error:', error);
+            } catch (error: any) {
+                console.error('❌ Auto-save error:', {
+                    message: error?.message,
+                    type: error?.name
+                });
+                // Don't show alert for auto-save errors, just log them
             }
         };
 
@@ -114,10 +133,21 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
 
         setIsSaving(true);
         try {
+            console.log('🔄 Starting to save reflection...', {
+                textLength: reflectionText.length,
+                date: today
+            });
+
             const saved = await reflectionService.saveReflection(reflectionText);
+
+            console.log('✅ Reflection saved successfully:', {
+                id: saved.id,
+                date: saved.date,
+                textLength: saved.reflectionText?.length
+            });
+
             setCurrentReflection(saved);
             setIsEditing(false);
-            console.log('✅ Reflection saved manually:', { id: saved.id, date: saved.date });
 
             if (onReflectionSaved) {
                 onReflectionSaved(saved);
@@ -129,8 +159,23 @@ export const DailyReflectionChat: React.FC<DailyReflectionChatProps> = ({ onRefl
                 [{ text: 'OK' }]
             );
         } catch (error: any) {
-            console.error('❌ Save error:', error);
-            const errorMessage = error?.message || 'Failed to save reflection. Please try again.';
+            console.error('❌ Save error details:', {
+                message: error?.message,
+                response: error?.response,
+                stack: error?.stack
+            });
+
+            let errorMessage = 'Failed to save reflection. Please try again.';
+
+            if (error?.message) {
+                errorMessage = error.message;
+            }
+
+            // Check for network errors
+            if (error?.message?.includes('Network') || error?.message?.includes('Failed to fetch')) {
+                errorMessage = 'Network error. Please check your connection and ensure the backend server is running.';
+            }
+
             Alert.alert('Error', errorMessage);
         } finally {
             setIsSaving(false);

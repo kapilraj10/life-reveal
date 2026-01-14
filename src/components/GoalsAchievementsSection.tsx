@@ -79,16 +79,31 @@ export const GoalsAchievementsSection: React.FC<GoalsAchievementsSectionProps> =
         }
 
         try {
+            console.log('🔄 Creating new goal:', { title: trimmed });
             const newGoal = await goalService.createGoal(trimmed);
+            console.log('✅ Goal created successfully:', { id: newGoal.id, title: newGoal.title });
+
             setGoals([...goals, newGoal]);
             setNewGoalText('');
 
             // Update stats
             const updatedStats = await goalService.getGoalStats();
             setStats(updatedStats);
-        } catch (error) {
-            console.error('Error adding goal:', error);
-            Alert.alert('Error', 'Failed to add goal. Please try again.');
+        } catch (error: any) {
+            console.error('❌ Error adding goal:', {
+                message: error?.message,
+                response: error?.response
+            });
+
+            let errorMessage = 'Failed to add goal. Please try again.';
+
+            if (error?.message?.includes('Network') || error?.message?.includes('Failed to fetch')) {
+                errorMessage = 'Network error. Please check your connection and ensure the backend server is running.';
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+
+            Alert.alert('Error', errorMessage);
         }
     };
 
