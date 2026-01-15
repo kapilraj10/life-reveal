@@ -4,7 +4,6 @@ import { DashboardHeader } from '../components/DashboardHeader';
 import { DashboardStatsCard } from '../components/DashboardStatsCard';
 import { DailyReflectionChat } from '../components/DailyReflectionChat';
 import { GoalsAchievementsSection } from '../components/GoalsAchievementsSection';
-import { DebugInfo } from '../components/DebugInfo';
 
 /**
  * Main Dashboard Screen (First Page)
@@ -50,9 +49,6 @@ export const DashboardScreen: React.FC = () => {
                     }}
                 />
             </ScrollView>
-
-            {/* Debug Info - Only for development */}
-            <DebugInfo />
         </View>
     );
 };
