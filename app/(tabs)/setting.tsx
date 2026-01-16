@@ -6,9 +6,14 @@ import { router } from 'expo-router';
 export default function SettingsScreen() {
     const { user, logout } = useContext(AuthContext);
 
-    const handleLogout = () => {
-        logout();
-        router.replace('/(auth)/login');
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error('Logout failed:', error);
+        } finally {
+            router.replace('/(auth)/login');
+        }
     };
 
     return (
