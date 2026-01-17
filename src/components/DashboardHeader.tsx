@@ -107,11 +107,35 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
             const fileName = `LifeReveal_Reflections_${new Date().toISOString().split('T')[0]}.csv`;
             const fileUri = baseDir + fileName;
 
+            console.log('ℹ️ Writing reflections CSV to', fileUri);
+
             await fs.writeAsStringAsync(fileUri, csvContent, {
                 encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8',
             });
 
-            console.log('✅ Reflections CSV saved to:', fileUri);
+            // Verify file exists
+            const info = await fs.getInfoAsync(fileUri, { size: true });
+            console.log('ℹ️ File info after write (reflections):', info);
+
+            // If file doesn't exist, try cacheDirectory as a fallback
+            if (!info.exists) {
+                console.warn('⚠️ Reflections file not found after write, retrying to cacheDirectory if available');
+                if (fs.cacheDirectory && baseDir !== fs.cacheDirectory) {
+                    const fallbackUri = fs.cacheDirectory + fileName;
+                    try {
+                        await fs.writeAsStringAsync(fallbackUri, csvContent, { encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8' });
+                        const fallbackInfo = await fs.getInfoAsync(fallbackUri, { size: true });
+                        console.log('ℹ️ Fallback file info (reflections):', fallbackInfo);
+                        if (fallbackInfo.exists) {
+                            console.log('✅ Reflections CSV saved to fallback:', fallbackUri);
+                        }
+                    } catch (fbErr) {
+                        console.error('❌ Failed writing reflections fallback file:', fbErr);
+                    }
+                }
+            } else {
+                console.log('✅ Reflections CSV saved to:', fileUri);
+            }
 
             // Share the file (handle Android content URI)
             const canShare = await Sharing.isAvailableAsync();
@@ -188,11 +212,34 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
             const fileName = `LifeReveal_Goals_${new Date().toISOString().split('T')[0]}.csv`;
             const fileUri = baseDir + fileName;
 
+            console.log('ℹ️ Writing goals CSV to', fileUri);
+
             await fs.writeAsStringAsync(fileUri, csvContent, {
                 encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8',
             });
 
-            console.log('✅ Goals CSV saved to:', fileUri);
+            // Verify file exists
+            const info = await fs.getInfoAsync(fileUri, { size: true });
+            console.log('ℹ️ File info after write (goals):', info);
+
+            if (!info.exists) {
+                console.warn('⚠️ Goals file not found after write, retrying to cacheDirectory if available');
+                if (fs.cacheDirectory && baseDir !== fs.cacheDirectory) {
+                    const fallbackUri = fs.cacheDirectory + fileName;
+                    try {
+                        await fs.writeAsStringAsync(fallbackUri, csvContent, { encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8' });
+                        const fallbackInfo = await fs.getInfoAsync(fallbackUri, { size: true });
+                        console.log('ℹ️ Fallback file info (goals):', fallbackInfo);
+                        if (fallbackInfo.exists) {
+                            console.log('✅ Goals CSV saved to fallback:', fallbackUri);
+                        }
+                    } catch (fbErr) {
+                        console.error('❌ Failed writing goals fallback file:', fbErr);
+                    }
+                }
+            } else {
+                console.log('✅ Goals CSV saved to:', fileUri);
+            }
 
             // Share the file (handle Android content URI)
             const canShare = await Sharing.isAvailableAsync();
@@ -270,11 +317,34 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
             const fileName = `LifeReveal_Achievements_${new Date().toISOString().split('T')[0]}.csv`;
             const fileUri = baseDir + fileName;
 
+            console.log('ℹ️ Writing achievements CSV to', fileUri);
+
             await fs.writeAsStringAsync(fileUri, csvContent, {
                 encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8',
             });
 
-            console.log('✅ Achievements CSV saved to:', fileUri);
+            // Verify file exists
+            const info = await fs.getInfoAsync(fileUri, { size: true });
+            console.log('ℹ️ File info after write (achievements):', info);
+
+            if (!info.exists) {
+                console.warn('⚠️ Achievements file not found after write, retrying to cacheDirectory if available');
+                if (fs.cacheDirectory && baseDir !== fs.cacheDirectory) {
+                    const fallbackUri = fs.cacheDirectory + fileName;
+                    try {
+                        await fs.writeAsStringAsync(fallbackUri, csvContent, { encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8' });
+                        const fallbackInfo = await fs.getInfoAsync(fallbackUri, { size: true });
+                        console.log('ℹ️ Fallback file info (achievements):', fallbackInfo);
+                        if (fallbackInfo.exists) {
+                            console.log('✅ Achievements CSV saved to fallback:', fallbackUri);
+                        }
+                    } catch (fbErr) {
+                        console.error('❌ Failed writing achievements fallback file:', fbErr);
+                    }
+                }
+            } else {
+                console.log('✅ Achievements CSV saved to:', fileUri);
+            }
 
             // Share the file (handle Android content URI)
             const canShare = await Sharing.isAvailableAsync();
