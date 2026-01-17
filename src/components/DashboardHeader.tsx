@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -51,7 +51,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
 
                             // Redirect to login page
                             console.log('🔄 Redirecting to login page...');
-                            router.replace('/(auth)/login');
+                            try {
+                                // ensure navigation happens after logout completes
+                                router.replace('/(auth)/login');
+                            } catch (navErr) {
+                                console.error('Navigation error after logout:', navErr);
+                            }
 
                             console.log('✅ Logout complete');
                         } catch (error) {
@@ -89,25 +94,44 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
                 csvContent += `"${date}","${text}","${createdAt}"\n`;
             });
 
-            // Save to file using legacy FileSystem API
-            const fileName = `LifeReveal_Reflections_${new Date().toISOString().split('T')[0]}.csv`;
-            const fileUri = (FileSystem as any).documentDirectory + fileName;
+            // Save to file using FileSystem
+            const fs = FileSystem as any;
+            const baseDir = fs.documentDirectory || fs.cacheDirectory || '';
 
-            await (FileSystem as any).writeAsStringAsync(fileUri, csvContent, {
-                encoding: (FileSystem as any).EncodingType.UTF8,
+            if (!baseDir) {
+                Alert.alert('Error', 'File system not available on this platform. Export canceled.');
+                setIsExporting(false);
+                return;
+            }
+
+            const fileName = `LifeReveal_Reflections_${new Date().toISOString().split('T')[0]}.csv`;
+            const fileUri = baseDir + fileName;
+
+            await fs.writeAsStringAsync(fileUri, csvContent, {
+                encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8',
             });
 
             console.log('✅ Reflections CSV saved to:', fileUri);
 
-            // Share the file
+            // Share the file (handle Android content URI)
             const canShare = await Sharing.isAvailableAsync();
 
             if (canShare) {
-                await Sharing.shareAsync(fileUri, {
+                let shareUri = fileUri;
+                try {
+                    if (Platform.OS === 'android' && typeof fs.getContentUriAsync === 'function') {
+                        shareUri = await fs.getContentUriAsync(fileUri);
+                    }
+                } catch (err) {
+                    console.warn('Could not convert to content URI:', err);
+                }
+
+                await Sharing.shareAsync(shareUri, {
                     mimeType: 'text/csv',
                     dialogTitle: 'Export Daily Reflections',
                     UTI: 'public.comma-separated-values-text',
                 });
+
                 console.log('📤 Reflections shared successfully');
                 Alert.alert('Success', `Exported ${reflections.length} reflections!`);
             } else {
@@ -151,25 +175,44 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
                 csvContent += `"${date}","${title}","${status}","${createdAt}"\n`;
             });
 
-            // Save to file using legacy FileSystem API
-            const fileName = `LifeReveal_Goals_${new Date().toISOString().split('T')[0]}.csv`;
-            const fileUri = (FileSystem as any).documentDirectory + fileName;
+            // Save to file using FileSystem
+            const fs = FileSystem as any;
+            const baseDir = fs.documentDirectory || fs.cacheDirectory || '';
 
-            await (FileSystem as any).writeAsStringAsync(fileUri, csvContent, {
-                encoding: (FileSystem as any).EncodingType.UTF8,
+            if (!baseDir) {
+                Alert.alert('Error', 'File system not available on this platform. Export canceled.');
+                setIsExporting(false);
+                return;
+            }
+
+            const fileName = `LifeReveal_Goals_${new Date().toISOString().split('T')[0]}.csv`;
+            const fileUri = baseDir + fileName;
+
+            await fs.writeAsStringAsync(fileUri, csvContent, {
+                encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8',
             });
 
             console.log('✅ Goals CSV saved to:', fileUri);
 
-            // Share the file
+            // Share the file (handle Android content URI)
             const canShare = await Sharing.isAvailableAsync();
 
             if (canShare) {
-                await Sharing.shareAsync(fileUri, {
+                let shareUri = fileUri;
+                try {
+                    if (Platform.OS === 'android' && typeof fs.getContentUriAsync === 'function') {
+                        shareUri = await fs.getContentUriAsync(fileUri);
+                    }
+                } catch (err) {
+                    console.warn('Could not convert to content URI:', err);
+                }
+
+                await Sharing.shareAsync(shareUri, {
                     mimeType: 'text/csv',
                     dialogTitle: 'Export Daily Goals',
                     UTI: 'public.comma-separated-values-text',
                 });
+
                 console.log('📤 Goals shared successfully');
                 Alert.alert('Success', `Exported ${goals.length} goals!`);
             } else {
@@ -214,25 +257,44 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout }) =>
                 csvContent += `"${title}","${description}","${type}","${date}","${createdAt}"\n`;
             });
 
-            // Save to file using legacy FileSystem API
-            const fileName = `LifeReveal_Achievements_${new Date().toISOString().split('T')[0]}.csv`;
-            const fileUri = (FileSystem as any).documentDirectory + fileName;
+            // Save to file using FileSystem
+            const fs = FileSystem as any;
+            const baseDir = fs.documentDirectory || fs.cacheDirectory || '';
 
-            await (FileSystem as any).writeAsStringAsync(fileUri, csvContent, {
-                encoding: (FileSystem as any).EncodingType.UTF8,
+            if (!baseDir) {
+                Alert.alert('Error', 'File system not available on this platform. Export canceled.');
+                setIsExporting(false);
+                return;
+            }
+
+            const fileName = `LifeReveal_Achievements_${new Date().toISOString().split('T')[0]}.csv`;
+            const fileUri = baseDir + fileName;
+
+            await fs.writeAsStringAsync(fileUri, csvContent, {
+                encoding: fs.EncodingType ? fs.EncodingType.UTF8 : 'utf8',
             });
 
             console.log('✅ Achievements CSV saved to:', fileUri);
 
-            // Share the file
+            // Share the file (handle Android content URI)
             const canShare = await Sharing.isAvailableAsync();
 
             if (canShare) {
-                await Sharing.shareAsync(fileUri, {
+                let shareUri = fileUri;
+                try {
+                    if (Platform.OS === 'android' && typeof fs.getContentUriAsync === 'function') {
+                        shareUri = await fs.getContentUriAsync(fileUri);
+                    }
+                } catch (err) {
+                    console.warn('Could not convert to content URI:', err);
+                }
+
+                await Sharing.shareAsync(shareUri, {
                     mimeType: 'text/csv',
                     dialogTitle: 'Export Achievements',
                     UTI: 'public.comma-separated-values-text',
                 });
+
                 console.log('📤 Achievements shared successfully');
                 Alert.alert('Success', `Exported ${achievements.length} achievements!`);
             } else {
